@@ -48,6 +48,8 @@ def build_argparser():
                       type=str, required=True, choices=('ssd', 'yolo', 'faceboxes', 'centernet', 'retina'))
     args.add_argument('-i', '--input', required=True, type=str,
                       help='Required. Path to an image, folder with images, video file or a numeric camera ID.')
+    args.add_argument('--output_video', type=str, required=True,
+                        help='Optional. Path to output video')
     args.add_argument('-d', '--device', default='CPU', type=str,
                       help='Optional. Specify the target device to infer on; CPU, GPU, FPGA, HDDL or MYRIAD is '
                            'acceptable. The sample will look for a suitable plugin for device specified. '
@@ -234,7 +236,7 @@ def main():
     next_frame_id_to_show = 0
 
     log.info('Starting inference...')
-    print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
+    # print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
 
     palette = ColorPalette(len(model.labels) if model.labels else 100)
     presenter = monitors.Presenter(args.utilization_monitors, 55,
@@ -242,6 +244,16 @@ def main():
                                     round(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) / 8)))
 
     metrics = PerformanceMetrics()
+
+
+    if len(args.output_video):
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        target_width, target_height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        video_output_size = (target_width, target_height)
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        output_video = cv2.VideoWriter(args.output_video, fourcc, fps, video_output_size)
+    else:
+        output_video = None
 
     while cap.isOpened():
         if detector_pipeline.callback_exceptions:
@@ -261,13 +273,9 @@ def main():
             metrics.update(start_time, frame)
             if not args.no_show:
                 cv2.imshow('Detection Results', frame)
-                key = cv2.waitKey(1)
 
-                ESC_KEY = 27
-                # Quit.
-                if key in {ord('q'), ord('Q'), ESC_KEY}:
-                    break
-                presenter.handleKey(key)
+            if output_video:
+                output_video.write(cv2.resize(frame, video_output_size))
             next_frame_id_to_show += 1
             continue
 
