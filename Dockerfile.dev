@@ -1,4 +1,0 @@
-FROM openvino/ubuntu18_dev
-USER root
-RUN apt-get update
-RUN apt-get install ffmpeg -y

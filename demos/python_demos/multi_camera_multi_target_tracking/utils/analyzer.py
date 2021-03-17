@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 from tensorboardX import SummaryWriter
 
-from utils.visualization import plot_timeline
+from .visualization import plot_timeline
 
 
 class Analyzer(object):

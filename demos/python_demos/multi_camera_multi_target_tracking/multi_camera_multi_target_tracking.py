@@ -25,12 +25,12 @@ import sys
 
 import cv2 as cv
 
-from utils.network_wrappers import Detector, VectorCNN, MaskRCNN, DetectionsFromFileReader
-from mc_tracker.mct import MultiCameraTracker
-from utils.analyzer import save_embeddings
-from utils.misc import read_py_config, check_pressed_keys, AverageEstimator, set_log_config
-from utils.video import MulticamCapture, NormalizerCLAHE
-from utils.visualization import visualize_multicam_detections, get_target_size
+from .utils.network_wrappers import Detector, VectorCNN, MaskRCNN, DetectionsFromFileReader
+from .mc_tracker.mct import MultiCameraTracker
+from .utils.analyzer import save_embeddings
+from .utils.misc import read_py_config, check_pressed_keys, AverageEstimator, set_log_config
+from .utils.video import MulticamCapture, NormalizerCLAHE
+from .utils.visualization import visualize_multicam_detections, get_target_size
 from openvino.inference_engine import IECore  # pylint: disable=import-error,E0611
 
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'common'))

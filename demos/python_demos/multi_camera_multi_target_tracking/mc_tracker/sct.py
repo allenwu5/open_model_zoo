@@ -21,8 +21,8 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cosine, cdist
 
-from utils.analyzer import Analyzer
-from utils.misc import AverageEstimator
+from ..utils.analyzer import Analyzer
+from ..utils.misc import AverageEstimator
 
 THE_BIGGEST_DISTANCE = 10.
 
