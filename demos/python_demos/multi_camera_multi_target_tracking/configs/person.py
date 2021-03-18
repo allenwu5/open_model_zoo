@@ -9,21 +9,21 @@ obj_segm = dict(
 )
 
 mct_config = dict(
-    time_window=20,
+    time_window=4,
     global_match_thresh=0.2,
     bbox_min_aspect_ratio=1.2
 )
 
 sct_config = dict(
-    time_window=10,
-    continue_time_thresh=2,
+    time_window=2,
+    continue_time_thresh=1,
     track_clear_thresh=3000,
-    match_threshold=0.25,
+    match_threshold=0.1,
     merge_thresh=0.15,
-    n_clusters=4,
-    max_bbox_velocity=0.2,
+    n_clusters=8,
+    max_bbox_velocity=1,
     detection_occlusion_thresh=0.7,
-    track_detection_iou_thresh=0.5,
+    track_detection_iou_thresh=0.1, 
     process_curr_features_number=0,
     interpolate_time_thresh=10,
     detection_filter_speed=0.6,
@@ -44,16 +44,16 @@ visualization_config = dict(
 
 analyzer = dict(
     enable=False,
-    show_distances=True,
-    save_distances='',
+    show_distances=False,
+    save_distances='/mnt/data/save_distances',
     concatenate_imgs_with_distances=True,
     plot_timeline_freq=0,
-    save_timeline='',
+    save_timeline='/mnt/data/save_timeline',
     crop_size=(32, 64)
 )
 
 embeddings = dict(
-    save_path='',
+    save_path='/mnt/data/embeddings',
     use_images=True,  # Use it with `analyzer['enable'] = True` to save crops of objects
     step=0  # Equal to subdirectory for `save_path`
 )

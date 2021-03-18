@@ -31,6 +31,7 @@ from .utils.analyzer import save_embeddings
 from .utils.misc import read_py_config, check_pressed_keys, AverageEstimator, set_log_config
 from .utils.video import MulticamCapture, NormalizerCLAHE
 from .utils.visualization import visualize_multicam_detections, get_target_size
+from .utils.count_persons import count_persons
 from openvino.inference_engine import IECore  # pylint: disable=import-error,E0611
 
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'common'))
@@ -164,6 +165,9 @@ def run(params, config, capture, detector, reid):
         latency = max(time.perf_counter() - start, sys.float_info.epsilon)
         avg_latency.update(latency)
         fps = round(1. / latency, 1)
+
+        # Crop persons before drawing
+        count_persons(frame_number, prev_frames, tracked_objects, **config['visualization_config'])
 
         vis = visualize_multicam_detections(prev_frames, tracked_objects, fps, **config['visualization_config'])
         presenter.drawGraphs(vis)
