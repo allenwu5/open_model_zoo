@@ -73,8 +73,9 @@ class MulticamCapture:
                           .output('pipe:', vframes=1, format='image2', vcodec='mjpeg')
                           .run(capture_stdout=True, quiet=True)
                           )
-                frame = cv.imdecode(np.frombuffer(out, np.uint8), -1)
-                frames.append(frame)
+                if out:
+                    frame = cv.imdecode(np.frombuffer(out, np.uint8), -1)
+                    frames.append(frame)
             self.seek_time += 1/self.specific_fps
 
         return len(frames) == len(self.captures), frames
