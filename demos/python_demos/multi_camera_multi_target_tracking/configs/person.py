@@ -53,7 +53,7 @@ analyzer = dict(
 )
 
 embeddings = dict(
-    save_path='/mnt/data/embeddings',
+    save_path='',
     use_images=True,  # Use it with `analyzer['enable'] = True` to save crops of objects
     step=0  # Equal to subdirectory for `save_path`
 )

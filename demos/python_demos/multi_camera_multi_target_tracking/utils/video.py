@@ -12,17 +12,24 @@
 """
 
 import logging as log
+from os.path import exists
+
 import cv2 as cv
+import ffmpeg
+import numpy as np
 
 
 class MulticamCapture:
-    def __init__(self, sources):
+    def __init__(self, sources, specific_fps):
         assert sources
+        self.sources = sources
         self.captures = []
         self.transforms = []
+        self.seek_time = 0
+        self.specific_fps = specific_fps
 
         try:
-            sources = [int(src) for src in sources]
+            self.sources = [int(src) for src in sources]
             mode = 'cam'
         except ValueError:
             mode = 'video'
@@ -40,6 +47,8 @@ class MulticamCapture:
         else:
             for video_path in sources:
                 log.info('Opening file {}'.format(video_path))
+                assert exists(video_path)
+
                 cap = cv.VideoCapture(video_path)
                 assert cap.isOpened()
                 self.captures.append(cap)
@@ -49,12 +58,24 @@ class MulticamCapture:
 
     def get_frames(self):
         frames = []
-        for capture in self.captures:
-            has_frame, frame = capture.read()
-            if has_frame:
-                for t in self.transforms:
-                    frame = t(frame)
+
+        if self.specific_fps is None:
+            for capture in self.captures:
+                has_frame, frame = capture.read()
+                if has_frame:
+                    for t in self.transforms:
+                        frame = t(frame)
+                    frames.append(frame)
+        else:
+            for source in self.sources:
+                out, _ = (ffmpeg
+                          .input(source, ss=self.seek_time)
+                          .output('pipe:', vframes=1, format='image2', vcodec='mjpeg')
+                          .run(capture_stdout=True, quiet=True)
+                          )
+                frame = cv.imdecode(np.frombuffer(out, np.uint8), -1)
                 frames.append(frame)
+            self.seek_time += 1/self.specific_fps
 
         return len(frames) == len(self.captures), frames
 

@@ -122,6 +122,8 @@ def run(params, config, capture, detector, reid):
 
     if len(params.output_video):
         frame_size, fps = capture.get_source_parameters()
+        if params.fps:
+            fps = [params.fps]
         target_width, target_height = get_target_size(frame_size, None, **config['visualization_config'])
         video_output_size = (target_width, target_height)
         fourcc = cv.VideoWriter_fourcc(*'XVID')
@@ -235,7 +237,7 @@ def main():
                              type=str, default=None)
     parser.add_argument('-u', '--utilization_monitors', default='', type=str,
                         help='Optional. List of monitors to show initially.')
-
+    parser.add_argument('--fps', type=float, default=None)
     args = parser.parse_args()
     if check_detectors(args) != 1:
         sys.exit(1)
@@ -248,7 +250,7 @@ def main():
         sys.exit(1)
 
     random.seed(config['random_seed'])
-    capture = MulticamCapture(args.i)
+    capture = MulticamCapture(args.i, args.fps)
 
     log.info("Creating Inference Engine")
     ie = IECore()
