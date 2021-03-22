@@ -91,9 +91,10 @@ class FramesThreadBody:
                 time.sleep(0.1)
                 continue
             has_frames, frames = self.capture.get_frames()
-            if not has_frames and self.frames_queue.empty():
-                self.process = False
-                break
+            # if not has_frames and self.frames_queue.empty():
+            #     self.process = False
+            #     print('No frames, exit.')
+            #     break
             if has_frames:
                 self.frames_queue.put(frames)
 
@@ -179,8 +180,8 @@ def run(params, config, capture, detector, reid):
         if output_video:
             output_video.write(cv.resize(vis, video_output_size))
 
-        print('\rProcessing frame: {}, fps = {} (avg_fps = {:.3})'.format(
-                            frame_number, fps, 1. / avg_latency.get()), end="")
+        # print('\rProcessing frame: {}, fps = {} (avg_fps = {:.3})'.format(
+        #                     frame_number, fps, 1. / avg_latency.get()), end="")
         prev_frames, frames = frames, prev_frames
     print(presenter.reportMeans())
     print('')
@@ -219,7 +220,7 @@ def main():
     parser.add_argument('--t_segmentation', type=float, default=0.6,
                         help='Threshold for object instance segmentation model')
 
-    parser.add_argument('--m_reid', type=str, required=True,
+    parser.add_argument('--m_reid', type=str, required=False,
                         help='Path to the object re-identification model')
 
     parser.add_argument('--output_video', type=str, default='', required=False,
@@ -237,7 +238,8 @@ def main():
                              type=str, default=None)
     parser.add_argument('-u', '--utilization_monitors', default='', type=str,
                         help='Optional. List of monitors to show initially.')
-    parser.add_argument('--fps', type=float, default=None)
+    parser.add_argument('--fps', type=float, required=True)
+    parser.add_argument("--seek_mode", help="", action='store_true')
     args = parser.parse_args()
     if check_detectors(args) != 1:
         sys.exit(1)
@@ -250,7 +252,7 @@ def main():
         sys.exit(1)
 
     random.seed(config['random_seed'])
-    capture = MulticamCapture(args.i, args.fps)
+    capture = MulticamCapture(args.i, args.seek_mode, args.fps)
 
     log.info("Creating Inference Engine")
     ie = IECore()

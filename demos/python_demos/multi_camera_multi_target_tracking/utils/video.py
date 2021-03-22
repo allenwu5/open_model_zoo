@@ -12,6 +12,7 @@
 """
 
 import logging as log
+import os
 
 import cv2 as cv
 import ffmpeg
@@ -19,12 +20,13 @@ import numpy as np
 
 
 class MulticamCapture:
-    def __init__(self, sources, specific_fps):
+    def __init__(self, sources, seek_mode, specific_fps):
         assert sources
         self.sources = sources
         self.captures = []
         self.transforms = []
         self.seek_time = 0
+        self.seek_mode = seek_mode
         self.specific_fps = specific_fps
 
         try:
@@ -44,9 +46,10 @@ class MulticamCapture:
                 assert cap.isOpened()
                 self.captures.append(cap)
         else:
+            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
             for video_path in sources:
                 log.info('Opening file {}'.format(video_path))
-                cap = cv.VideoCapture(video_path, cv.CAP_OPENCV_MJPEG)
+                cap = cv.VideoCapture(video_path)
                 assert cap.isOpened()
                 self.captures.append(cap)
 
@@ -56,13 +59,16 @@ class MulticamCapture:
     def get_frames(self):
         frames = []
 
-        if self.specific_fps is None:
+        if not self.seek_mode:
             for capture in self.captures:
                 has_frame, frame = capture.read()
-                if has_frame:
+                timestamp = capture.get(cv.CAP_PROP_POS_MSEC)
+                if has_frame and timestamp >= self.seek_time * 1000:
+                    print(f'timestamp: {timestamp/1000:08.2f}')
                     for t in self.transforms:
                         frame = t(frame)
                     frames.append(frame)
+                    self.seek_time += 1/self.specific_fps
         else:
             for source in self.sources:
                 out, _ = (ffmpeg
@@ -73,7 +79,7 @@ class MulticamCapture:
                 if out:
                     frame = cv.imdecode(np.frombuffer(out, np.uint8), -1)
                     frames.append(frame)
-            self.seek_time += 1/self.specific_fps
+                    self.seek_time += 1/self.specific_fps
 
         return len(frames) == len(self.captures), frames
 
