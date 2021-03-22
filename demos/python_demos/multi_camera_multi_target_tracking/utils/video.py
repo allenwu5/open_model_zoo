@@ -58,16 +58,17 @@ class MulticamCapture:
 
     def get_frames(self):
         frames = []
+        seconds = []
 
         if not self.seek_mode:
             for capture in self.captures:
                 has_frame, frame = capture.read()
                 timestamp = capture.get(cv.CAP_PROP_POS_MSEC)
                 if has_frame and timestamp >= self.seek_time * 1000:
-                    print(f'timestamp: {timestamp/1000:08.2f}')
                     for t in self.transforms:
                         frame = t(frame)
                     frames.append(frame)
+                    seconds.append(self.seek_time)
                     self.seek_time += 1/self.specific_fps
         else:
             for source in self.sources:
@@ -79,9 +80,10 @@ class MulticamCapture:
                 if out:
                     frame = cv.imdecode(np.frombuffer(out, np.uint8), -1)
                     frames.append(frame)
+                    seconds.append(self.seek_time)
                     self.seek_time += 1/self.specific_fps
 
-        return len(frames) == len(self.captures), frames
+        return len(frames) == len(self.captures), frames, seconds
 
     def get_num_sources(self):
         return len(self.captures)

@@ -178,7 +178,7 @@ def main():
         key = check_pressed_keys(key)
         if key == 27:
             break
-        has_frames, frames = capture.get_frames()
+        has_frames, frames, seconds = capture.get_frames()
         if not has_frames:
             break
 

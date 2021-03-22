@@ -14,29 +14,32 @@
 """
 
 import argparse
-import time
-import queue
-from threading import Thread
+import datetime
 import json
 import logging as log
 import os
+import queue
 import random
 import sys
+import time
+from threading import Thread
 
 import cv2 as cv
+from openvino.inference_engine import \
+    IECore  # pylint: disable=import-error,E0611
 
-from .utils.network_wrappers import Detector, VectorCNN, MaskRCNN, DetectionsFromFileReader
 from .mc_tracker.mct import MultiCameraTracker
 from .utils.analyzer import save_embeddings
-from .utils.misc import read_py_config, check_pressed_keys, AverageEstimator, set_log_config
-from .utils.video import MulticamCapture, NormalizerCLAHE
-from .utils.visualization import visualize_multicam_detections, get_target_size
 from .utils.count_persons import count_persons
-from openvino.inference_engine import IECore  # pylint: disable=import-error,E0611
+from .utils.misc import (AverageEstimator, check_pressed_keys, read_py_config,
+                         set_log_config)
+from .utils.network_wrappers import (DetectionsFromFileReader, Detector,
+                                     MaskRCNN, VectorCNN)
+from .utils.video import MulticamCapture, NormalizerCLAHE
+from .utils.visualization import get_target_size, visualize_multicam_detections
 
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'common'))
 import monitors
-
 
 set_log_config()
 
@@ -82,6 +85,7 @@ class FramesThreadBody:
     def __init__(self, capture, max_queue_length=2):
         self.process = True
         self.frames_queue = queue.Queue()
+        self.seconds_queue = queue.Queue()
         self.capture = capture
         self.max_queue_length = max_queue_length
 
@@ -90,13 +94,14 @@ class FramesThreadBody:
             if self.frames_queue.qsize() > self.max_queue_length:
                 time.sleep(0.1)
                 continue
-            has_frames, frames = self.capture.get_frames()
+            has_frames, frames, seconds = self.capture.get_frames()
             # if not has_frames and self.frames_queue.empty():
             #     self.process = False
             #     print('No frames, exit.')
             #     break
             if has_frames:
                 self.frames_queue.put(frames)
+                self.seconds_queue.put(seconds)
 
 
 def run(params, config, capture, detector, reid):
@@ -136,6 +141,7 @@ def run(params, config, capture, detector, reid):
     detector.run_async(prev_frames, frame_number)
     presenter = monitors.Presenter(params.utilization_monitors, 0)
 
+    start_time = datetime.datetime.now()
     while thread_body.process:
         if not params.no_show:
             key = check_pressed_keys(key)
@@ -145,8 +151,10 @@ def run(params, config, capture, detector, reid):
         start = time.perf_counter()
         try:
             frames = thread_body.frames_queue.get_nowait()
+            seconds = thread_body.seconds_queue.get_nowait()
         except queue.Empty:
             frames = None
+            seconds = None
 
         if frames is None:
             continue
@@ -155,6 +163,10 @@ def run(params, config, capture, detector, reid):
         if params.save_detections:
             update_detections(output_detections, all_detections, frame_number)
         frame_number += 1
+
+        timestamps = [start_time + datetime.timedelta(0, s) for s in seconds]
+        print(timestamps)
+
         detector.run_async(frames, frame_number)
 
         all_masks = [[] for _ in range(len(all_detections))]
@@ -170,7 +182,7 @@ def run(params, config, capture, detector, reid):
         fps = round(1. / latency, 1)
 
         # Crop persons before drawing
-        count_persons(frame_number, prev_frames, tracked_objects, **config['visualization_config'])
+        count_persons(timestamps, prev_frames, tracked_objects, **config['visualization_config'])
 
         vis = visualize_multicam_detections(prev_frames, tracked_objects, fps, **config['visualization_config'])
         presenter.drawGraphs(vis)
