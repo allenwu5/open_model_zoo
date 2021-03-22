@@ -12,7 +12,6 @@
 """
 
 import logging as log
-from os.path import exists
 
 import cv2 as cv
 import ffmpeg
@@ -47,9 +46,7 @@ class MulticamCapture:
         else:
             for video_path in sources:
                 log.info('Opening file {}'.format(video_path))
-                assert exists(video_path)
-
-                cap = cv.VideoCapture(video_path)
+                cap = cv.VideoCapture(video_path, cv.CAP_OPENCV_MJPEG)
                 assert cap.isOpened()
                 self.captures.append(cap)
 
