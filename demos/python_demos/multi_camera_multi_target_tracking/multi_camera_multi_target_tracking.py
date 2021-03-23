@@ -164,8 +164,8 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
             update_detections(output_detections, all_detections, frame_number)
         frame_number += 1
 
-        timestamps = [start_time + datetime.timedelta(0, s) for s in seconds]
-        print(timestamps)
+        frame_times = [start_time + datetime.timedelta(0, s) for s in seconds]
+        print(frame_times)
 
         detector.run_async(frames, frame_number)
 
@@ -183,9 +183,9 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
 
         person_class_dict = {}
         if classify_person_flow:
-            # Crop persons before drawing
-            person_class_dict = classify_persons_per_frame(timestamps, prev_frames, tracked_objects, classify_person_flow, **config['visualization_config'])
-        vis = visualize_multicam_detections(timestamps, prev_frames, tracked_objects, person_class_dict, fps, **config['visualization_config'])
+            # Crop persons to classify before drawing
+            person_class_dict = classify_persons_per_frame(frame_times, prev_frames, tracked_objects, classify_person_flow, **config['visualization_config'])
+        vis = visualize_multicam_detections(frame_times, prev_frames, tracked_objects, person_class_dict, fps, **config['visualization_config'])
         presenter.drawGraphs(vis)
         if not params.no_show:
             cv.imshow(win_name, vis)

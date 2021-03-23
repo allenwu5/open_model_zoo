@@ -66,12 +66,12 @@ def get_target_size(frame_sizes, vis=None, max_window_size=(1920, 1080), stack_f
     return target_width, target_height
 
 
-def visualize_multicam_detections(timestamps, frames, all_objects, person_class_dict, fps='', show_all_detections=True,
+def visualize_multicam_detections(frame_times, frames, all_objects, person_class_dict, fps='', show_all_detections=True,
                                   max_window_size=(1920, 1080), stack_frames='vertical'):
     assert len(frames) == len(all_objects)
     assert stack_frames in ['vertical', 'horizontal']
     vis = None
-    for i, (timestamp, frame, objects) in enumerate(zip(timestamps, frames, all_objects)):
+    for i, (frame_time, frame, objects) in enumerate(zip(frame_times, frames, all_objects)):
         draw_detections(frame, objects, person_class_dict, show_all_detections)
         if vis is not None:
             if stack_frames == 'vertical':
@@ -85,11 +85,11 @@ def visualize_multicam_detections(timestamps, frames, all_objects, person_class_
 
     vis = cv.resize(vis, (target_width, target_height))
 
-    min_timestamp = min(timestamps)
-    label_size, base_line = cv.getTextSize(str(min_timestamp), cv.FONT_HERSHEY_SIMPLEX, 1, 2)
-    cv.putText(vis, str(min_timestamp), (base_line*2, base_line*3),
+    min_frame_time = min(frame_times)
+    label_size, base_line = cv.getTextSize(str(min_frame_time), cv.FONT_HERSHEY_SIMPLEX, 1, 2)
+    cv.putText(vis, str(min_frame_time), (base_line*2, base_line*3),
                cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 10)
-    cv.putText(vis, str(min_timestamp), (base_line*2, base_line*3),
+    cv.putText(vis, str(min_frame_time), (base_line*2, base_line*3),
                cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
     return vis
 

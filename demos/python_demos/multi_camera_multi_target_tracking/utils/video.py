@@ -64,8 +64,8 @@ class MulticamCapture:
             for capture in self.captures:
                 has_frame, frame = capture.read()
                 if has_frame:
-                    timestamp = capture.get(cv.CAP_PROP_POS_MSEC)
-                    if timestamp >= self.seek_time * 1000:
+                    frame_time = capture.get(cv.CAP_PROP_POS_MSEC)
+                    if frame_time >= self.seek_time * 1000:
                         for t in self.transforms:
                             frame = t(frame)
                         frames.append(frame)
