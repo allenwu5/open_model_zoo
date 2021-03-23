@@ -104,7 +104,7 @@ class FramesThreadBody:
                 self.seconds_queue.put(seconds)
 
 
-def run(params, config, capture, detector, reid, classify_person_func):
+def run(params, config, capture, detector, reid, classify_person_flow=None):
     win_name = 'Multi camera tracking'
     frame_number = 0
     avg_latency = AverageEstimator()
@@ -181,8 +181,10 @@ def run(params, config, capture, detector, reid, classify_person_func):
         avg_latency.update(latency)
         fps = round(1. / latency, 1)
 
-        # Crop persons before drawing
-        person_class_dict = classify_persons_per_frame(timestamps, prev_frames, tracked_objects, classify_person_func, **config['visualization_config'])
+        person_class_dict = {}
+        if classify_person_flow:
+            # Crop persons before drawing
+            person_class_dict = classify_persons_per_frame(timestamps, prev_frames, tracked_objects, classify_person_flow, **config['visualization_config'])
         vis = visualize_multicam_detections(timestamps, prev_frames, tracked_objects, person_class_dict, fps, **config['visualization_config'])
         presenter.drawGraphs(vis)
         if not params.no_show:
@@ -209,7 +211,7 @@ def run(params, config, capture, detector, reid, classify_person_func):
         save_embeddings(tracker.scts, **config['embeddings'])
 
 
-def main(classify_person_func):
+def main(classify_person_flow=None):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     """Prepares data for the object tracking demo"""
     parser = argparse.ArgumentParser(description='Multi camera multi object \
@@ -288,7 +290,7 @@ def main(classify_person_func):
     else:
         object_recognizer = None
 
-    run(args, config, capture, object_detector, object_recognizer, classify_person_func)
+    run(args, config, capture, object_detector, object_recognizer, classify_person_flow)
     log.info('Demo finished successfully')
 
 
