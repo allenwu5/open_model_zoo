@@ -18,7 +18,7 @@ import os
 from .misc import COLOR_PALETTE
 
 
-def draw_detections(frame, detections, show_all_detections=True):
+def draw_detections(frame, detections, person_class_dict, show_all_detections=True):
     """Draws detections and labels"""
     for i, obj in enumerate(detections):
         left, top, right, bottom = obj.rect
@@ -31,6 +31,7 @@ def draw_detections(frame, detections, show_all_detections=True):
 
         if id >= 0:
             label = 'ID {}'.format(label) if not isinstance(label, str) else label
+            label = f'{label} {person_class_dict[id]}'
             label_size, base_line = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 1, 2)
             top = max(top, label_size[1])
             cv.rectangle(frame, (left, top - label_size[1]), (left + label_size[0], top + base_line),
@@ -64,13 +65,13 @@ def get_target_size(frame_sizes, vis=None, max_window_size=(1920, 1080), stack_f
     return target_width, target_height
 
 
-def visualize_multicam_detections(frames, all_objects, fps='', show_all_detections=True,
+def visualize_multicam_detections(timestamps, frames, all_objects, person_class_dict, fps='', show_all_detections=True,
                                   max_window_size=(1920, 1080), stack_frames='vertical'):
     assert len(frames) == len(all_objects)
     assert stack_frames in ['vertical', 'horizontal']
     vis = None
-    for i, (frame, objects) in enumerate(zip(frames, all_objects)):
-        draw_detections(frame, objects, show_all_detections)
+    for i, (timestamp, frame, objects) in enumerate(zip(timestamps, frames, all_objects)):
+        draw_detections(frame, objects, person_class_dict, show_all_detections)
         if vis is not None:
             if stack_frames == 'vertical':
                 vis = np.vstack([vis, frame])
@@ -83,8 +84,11 @@ def visualize_multicam_detections(frames, all_objects, fps='', show_all_detectio
 
     vis = cv.resize(vis, (target_width, target_height))
 
-    label_size, base_line = cv.getTextSize(str(fps), cv.FONT_HERSHEY_SIMPLEX, 1, 2)
-    cv.putText(vis, str(fps), (base_line*2, base_line*3),
+    min_timestamp = min(timestamps)
+    label_size, base_line = cv.getTextSize(str(min_timestamp), cv.FONT_HERSHEY_SIMPLEX, 1, 2)
+    cv.putText(vis, str(min_timestamp), (base_line*2, base_line*3),
+               cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 10)
+    cv.putText(vis, str(min_timestamp), (base_line*2, base_line*3),
                cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
     return vis
 

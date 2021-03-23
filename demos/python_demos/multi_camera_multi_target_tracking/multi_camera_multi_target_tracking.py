@@ -30,7 +30,7 @@ from openvino.inference_engine import \
 
 from .mc_tracker.mct import MultiCameraTracker
 from .utils.analyzer import save_embeddings
-from .utils.count_persons import count_persons
+from .utils.classify_persons import classify_persons_per_frame
 from .utils.misc import (AverageEstimator, check_pressed_keys, read_py_config,
                          set_log_config)
 from .utils.network_wrappers import (DetectionsFromFileReader, Detector,
@@ -104,7 +104,7 @@ class FramesThreadBody:
                 self.seconds_queue.put(seconds)
 
 
-def run(params, config, capture, detector, reid):
+def run(params, config, capture, detector, reid, classify_person_func):
     win_name = 'Multi camera tracking'
     frame_number = 0
     avg_latency = AverageEstimator()
@@ -182,9 +182,8 @@ def run(params, config, capture, detector, reid):
         fps = round(1. / latency, 1)
 
         # Crop persons before drawing
-        count_persons(timestamps, prev_frames, tracked_objects, **config['visualization_config'])
-
-        vis = visualize_multicam_detections(prev_frames, tracked_objects, fps, **config['visualization_config'])
+        person_class_dict = classify_persons_per_frame(timestamps, prev_frames, tracked_objects, classify_person_func, **config['visualization_config'])
+        vis = visualize_multicam_detections(timestamps, prev_frames, tracked_objects, person_class_dict, fps, **config['visualization_config'])
         presenter.drawGraphs(vis)
         if not params.no_show:
             cv.imshow(win_name, vis)
@@ -210,7 +209,7 @@ def run(params, config, capture, detector, reid):
         save_embeddings(tracker.scts, **config['embeddings'])
 
 
-def main():
+def main(classify_person_func):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     """Prepares data for the object tracking demo"""
     parser = argparse.ArgumentParser(description='Multi camera multi object \
@@ -289,7 +288,7 @@ def main():
     else:
         object_recognizer = None
 
-    run(args, config, capture, object_detector, object_recognizer)
+    run(args, config, capture, object_detector, object_recognizer, classify_person_func)
     log.info('Demo finished successfully')
 
 
