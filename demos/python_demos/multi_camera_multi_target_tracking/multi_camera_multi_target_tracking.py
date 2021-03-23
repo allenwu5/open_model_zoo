@@ -165,7 +165,9 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
         frame_number += 1
 
         frame_times = [start_time + datetime.timedelta(0, s) for s in seconds]
-        print(frame_times)
+
+        # https://stackoverflow.com/questions/5419389/how-to-overwrite-the-previous-print-to-stdout-in-python
+        print(frame_times, end='\r')
 
         detector.run_async(frames, frame_number)
 

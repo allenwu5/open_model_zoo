@@ -45,10 +45,10 @@ visualization_config = dict(
 analyzer = dict(
     enable=False,
     show_distances=False,
-    save_distances='/mnt/data/save_distances',
+    save_distances='',
     concatenate_imgs_with_distances=True,
     plot_timeline_freq=0,
-    save_timeline='/mnt/data/save_timeline',
+    save_timeline='',
     crop_size=(32, 64)
 )
 
