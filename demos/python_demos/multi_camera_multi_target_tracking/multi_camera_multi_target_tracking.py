@@ -253,7 +253,7 @@ def main(classify_person_flow=None):
                         help='Optional. List of monitors to show initially.')
     parser.add_argument('--fps', type=float, required=True)
     parser.add_argument("--seek_mode", help="", action='store_true')
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
     if check_detectors(args) != 1:
         sys.exit(1)
 
