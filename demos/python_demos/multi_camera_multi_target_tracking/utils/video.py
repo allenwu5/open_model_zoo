@@ -63,13 +63,14 @@ class MulticamCapture:
         if not self.seek_mode:
             for capture in self.captures:
                 has_frame, frame = capture.read()
-                timestamp = capture.get(cv.CAP_PROP_POS_MSEC)
-                if has_frame and timestamp >= self.seek_time * 1000:
-                    for t in self.transforms:
-                        frame = t(frame)
-                    frames.append(frame)
-                    seconds.append(self.seek_time)
-                    self.seek_time += 1/self.specific_fps
+                if has_frame:
+                    timestamp = capture.get(cv.CAP_PROP_POS_MSEC)
+                    if timestamp >= self.seek_time * 1000:
+                        for t in self.transforms:
+                            frame = t(frame)
+                        frames.append(frame)
+                        seconds.append(self.seek_time)
+                        self.seek_time += 1/self.specific_fps
         else:
             for source in self.sources:
                 out, _ = (ffmpeg
