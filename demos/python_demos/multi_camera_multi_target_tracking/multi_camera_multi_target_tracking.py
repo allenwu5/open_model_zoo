@@ -20,11 +20,13 @@ import logging as log
 import os
 import queue
 import random
+import subprocess
 import sys
 import time
 from threading import Thread
 
 import cv2 as cv
+
 from openvino.inference_engine import \
     IECore  # pylint: disable=import-error,E0611
 
@@ -38,8 +40,12 @@ from .utils.network_wrappers import (DetectionsFromFileReader, Detector,
 from .utils.video import MulticamCapture, NormalizerCLAHE
 from .utils.visualization import get_target_size, visualize_multicam_detections
 
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'common'))
+sys.path.append(os.path.join(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))), 'common'))
+
+# Please import monitors here.
 import monitors
+
 
 set_log_config()
 
@@ -50,13 +56,15 @@ def check_detectors(args):
         '--m_segmentation': args.m_segmentation,
         '--detections': args.detections
     }
-    non_empty_detectors = [(det, value) for det, value in detectors.items() if value]
+    non_empty_detectors = [(det, value)
+                           for det, value in detectors.items() if value]
     det_number = len(non_empty_detectors)
     if det_number == 0:
         log.error('No detector specified, please specify one of the following parameters: '
                   '\'--m_detector\', \'--m_segmentation\' or \'--detections\'')
     elif det_number > 1:
-        det_string = ''.join('\n\t{}={}'.format(det[0], det[1]) for det in non_empty_detectors)
+        det_string = ''.join('\n\t{}={}'.format(
+            det[0], det[1]) for det in non_empty_detectors)
         log.error('Only one detector expected but got {}, please specify one of them:{}'
                   .format(len(non_empty_detectors), det_string))
     return det_number
@@ -122,18 +130,35 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
     tracker = MultiCameraTracker(capture.get_num_sources(), reid, config['sct_config'], **config['mct_config'],
                                  visual_analyze=config['analyzer'])
 
-    thread_body = FramesThreadBody(capture, max_queue_length=len(capture.captures) * 2)
+    thread_body = FramesThreadBody(
+        capture, max_queue_length=len(capture.captures) * 2)
     frames_thread = Thread(target=thread_body)
     frames_thread.start()
 
+    rtsp_mode = params.output_video.startswith('rtsp://')
     if len(params.output_video):
-        frame_size, fps = capture.get_source_parameters()
+        frame_size, source_fps = capture.get_source_parameters()
         if params.fps:
-            fps = [params.fps]
-        target_width, target_height = get_target_size(frame_size, None, **config['visualization_config'])
+            source_fps = [params.fps]
+        target_width, target_height = get_target_size(
+            frame_size, None, **config['visualization_config'])
         video_output_size = (target_width, target_height)
         fourcc = cv.VideoWriter_fourcc(*'XVID')
-        output_video = cv.VideoWriter(params.output_video, fourcc, min(fps), video_output_size)
+
+        if rtsp_mode:
+            # https://gist.github.com/takidog/2c981c34d5d5b41c0d712f8ef4ac60d3
+            # E.g. rtsp://localhost:8554/output
+            # Use "-c copy" would increase video quality but slowdown process
+            command = ['ffmpeg',
+                       '-i', '-',
+                    #    '-c', 'copy',
+                       '-f', 'rtsp',
+                       params.output_video]
+
+            output_video = subprocess.Popen(command, stdin=subprocess.PIPE)
+        else:
+            output_video = cv.VideoWriter(
+                params.output_video, fourcc, min(source_fps), video_output_size)
     else:
         output_video = None
 
@@ -186,14 +211,21 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
         person_class_dict = {}
         if classify_person_flow:
             # Crop persons to classify before drawing
-            person_class_dict = classify_persons_per_frame(frame_times, prev_frames, tracked_objects, classify_person_flow, **config['visualization_config'])
-        vis = visualize_multicam_detections(frame_times, prev_frames, tracked_objects, person_class_dict, fps, **config['visualization_config'])
+            person_class_dict = classify_persons_per_frame(
+                frame_times, prev_frames, tracked_objects, classify_person_flow, **config['visualization_config'])
+        vis = visualize_multicam_detections(
+            frame_times, prev_frames, tracked_objects, person_class_dict, fps, **config['visualization_config'])
         presenter.drawGraphs(vis)
         if not params.no_show:
             cv.imshow(win_name, vis)
 
         if output_video:
-            output_video.write(cv.resize(vis, video_output_size))
+            if rtsp_mode:
+                ret, frame = cv.imencode('.jpg', vis)
+                if ret:
+                    output_video.stdin.write(frame.tobytes())
+            else:
+                output_video.write(cv.resize(vis, video_output_size))
 
         # print('\rProcessing frame: {}, fps = {} (avg_fps = {:.3})'.format(
         #                     frame_number, fps, 1. / avg_latency.get()), end="")
@@ -205,9 +237,11 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
     frames_thread.join()
 
     if len(params.history_file):
-        save_json_file(params.history_file, tracker.get_all_tracks_history(), description='History file')
+        save_json_file(params.history_file, tracker.get_all_tracks_history(
+        ), description='History file')
     if len(params.save_detections):
-        save_json_file(params.save_detections, output_detections, description='Detections')
+        save_json_file(params.save_detections,
+                       output_detections, description='Detections')
 
     if len(config['embeddings']['save_path']):
         save_embeddings(tracker.scts, **config['embeddings'])
@@ -223,7 +257,8 @@ def main(classify_person_flow=None):
     parser.add_argument('--config', type=str, default=os.path.join(current_dir, 'configs/person.py'), required=False,
                         help='Configuration file')
 
-    parser.add_argument('--detections', type=str, help='JSON file with bounding boxes')
+    parser.add_argument('--detections', type=str,
+                        help='JSON file with bounding boxes')
 
     parser.add_argument('-m', '--m_detector', type=str, required=False,
                         help='Path to the object detection model')
@@ -244,7 +279,8 @@ def main(classify_person_flow=None):
                         help='Optional. Path to file in JSON format to save results of the demo')
     parser.add_argument('--save_detections', type=str, default='', required=False,
                         help='Optional. Path to file in JSON format to save bounding boxes')
-    parser.add_argument("--no_show", help="Optional. Don't show output", action='store_true')
+    parser.add_argument(
+        "--no_show", help="Optional. Don't show output", action='store_true')
 
     parser.add_argument('-d', '--device', type=str, default='CPU')
     parser.add_argument('-l', '--cpu_extension',
@@ -263,7 +299,8 @@ def main(classify_person_flow=None):
         log.info('Reading configuration file {}'.format(args.config))
         config = read_py_config(args.config)
     else:
-        log.error('No configuration file specified. Please specify parameter \'--config\'')
+        log.error(
+            'No configuration file specified. Please specify parameter \'--config\'')
         sys.exit(1)
 
     random.seed(config['random_seed'])
@@ -273,7 +310,8 @@ def main(classify_person_flow=None):
     ie = IECore()
 
     if args.detections:
-        object_detector = DetectionsFromFileReader(args.detections, args.t_detector)
+        object_detector = DetectionsFromFileReader(
+            args.detections, args.t_detector)
     elif args.m_segmentation:
         object_detector = MaskRCNN(ie, args.m_segmentation,
                                    config['obj_segm']['trg_classes'],
@@ -288,11 +326,13 @@ def main(classify_person_flow=None):
                                    capture.get_num_sources())
 
     if args.m_reid:
-        object_recognizer = VectorCNN(ie, args.m_reid, args.device, args.cpu_extension)
+        object_recognizer = VectorCNN(
+            ie, args.m_reid, args.device, args.cpu_extension)
     else:
         object_recognizer = None
 
-    run(args, config, capture, object_detector, object_recognizer, classify_person_flow)
+    run(args, config, capture, object_detector,
+        object_recognizer, classify_person_flow)
     log.info('Demo finished successfully')
 
 
