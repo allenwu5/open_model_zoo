@@ -151,7 +151,6 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
             # Use "-c copy" would increase video quality but slowdown process
             command = ['ffmpeg',
                        '-i', '-',
-                    #    '-c', 'copy',
                        '-f', 'rtsp',
                        params.output_video]
 
@@ -250,7 +249,7 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
 def main(classify_person_flow=None):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     """Prepares data for the object tracking demo"""
-    parser = argparse.ArgumentParser(description='Multi camera multi object \
+    parser = argparse.ArgumentParser(fromfile_prefix_chars='@', description='Multi camera multi object \
                                                   tracking live demo script')
     parser.add_argument('-i', type=str, nargs='+', help='Input sources (indexes \
                         of cameras or paths to video files)', required=True)
