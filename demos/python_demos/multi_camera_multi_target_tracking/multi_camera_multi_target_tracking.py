@@ -23,10 +23,10 @@ import random
 import subprocess
 import sys
 import time
+from os.path import splitext
 from threading import Thread
 
 import cv2 as cv
-
 from openvino.inference_engine import \
     IECore  # pylint: disable=import-error,E0611
 
@@ -45,7 +45,6 @@ sys.path.append(os.path.join(os.path.dirname(
 
 # Please import monitors here.
 import monitors
-
 
 set_log_config()
 
@@ -226,6 +225,11 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
             else:
                 output_video.write(cv.resize(vis, video_output_size))
 
+        if params.output_image:
+            file_path, ext = splitext(params.output_image)
+            tmp_file_name = f'{file_path}.tmp{ext}'
+            cv.imwrite(tmp_file_name, vis)
+            os.rename(tmp_file_name, params.output_image)
         # print('\rProcessing frame: {}, fps = {} (avg_fps = {:.3})'.format(
         #                     frame_number, fps, 1. / avg_latency.get()), end="")
         prev_frames, frames = frames, prev_frames
@@ -274,6 +278,9 @@ def main(classify_person_flow=None):
 
     parser.add_argument('--output_video', type=str, default='', required=False,
                         help='Optional. Path to output video')
+    parser.add_argument('--output_image', type=str, default='', required=False,
+                        help='Optional. Path to output image')
+
     parser.add_argument('--history_file', type=str, default='', required=False,
                         help='Optional. Path to file in JSON format to save results of the demo')
     parser.add_argument('--save_detections', type=str, default='', required=False,
