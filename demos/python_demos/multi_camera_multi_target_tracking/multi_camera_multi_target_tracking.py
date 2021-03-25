@@ -24,6 +24,7 @@ import subprocess
 import sys
 import time
 from os.path import splitext
+from pathlib import Path
 from threading import Thread
 
 import cv2 as cv
@@ -48,6 +49,7 @@ import monitors
 
 set_log_config()
 
+output_video_size_limit = 100 * 1024 * 1024
 
 def check_detectors(args):
     detectors = {
@@ -224,6 +226,11 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
                     output_video.stdin.write(frame.tobytes())
             else:
                 output_video.write(cv.resize(vis, video_output_size))
+                output_video_file = Path(params.output_video)
+                if output_video_file.stat().st_size > output_video_size_limit:
+                    output_video_file.unlink()
+                    output_video = cv.VideoWriter(
+                        params.output_video, fourcc, min(source_fps), video_output_size)
 
         if params.output_image:
             file_path, ext = splitext(params.output_image)
