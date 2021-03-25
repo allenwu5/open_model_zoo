@@ -1,4 +1,3 @@
-import cv2 as cv
 import numpy as np
 
 
@@ -12,7 +11,6 @@ def classify_persons(frame_time, frame, detections, classify_person_func):
 
         if id >= 0:
             crop_img = frame[top:bottom, left:right]
-            crop_img = cv.cvtColor(crop_img, cv.COLOR_BGR2RGB)  # BGR to RGB
             person_class = classify_person_func(frame_time, id, crop_img)
             person_class_dict[id] = person_class
     return person_class_dict
