@@ -13,6 +13,7 @@
 
 import logging as log
 import os
+import time
 
 import cv2 as cv
 import ffmpeg
@@ -50,7 +51,11 @@ class MulticamCapture:
             for video_path in sources:
                 log.info('Opening file {}'.format(video_path))
                 cap = cv.VideoCapture(video_path)
-                assert cap.isOpened()
+                while not cap.isOpened():
+                    log.warn(f'Waiting for {video_path}')
+                    time.sleep(3)
+                    cap = cv.VideoCapture(video_path)
+
                 self.captures.append(cap)
 
     def add_transform(self, t):

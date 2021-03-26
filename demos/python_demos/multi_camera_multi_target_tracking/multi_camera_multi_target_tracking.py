@@ -49,7 +49,8 @@ import monitors
 
 set_log_config()
 
-output_video_size_limit = 100 * 1024 * 1024
+OUTPUT_VIDEO_SIZE_LIMIT = 1000 * 1024 * 1024 # 1GB
+MAX_GET_FRAME_TIMES = 50
 
 def check_detectors(args):
     detectors = {
@@ -97,6 +98,7 @@ class FramesThreadBody:
         self.seconds_queue = queue.Queue()
         self.capture = capture
         self.max_queue_length = max_queue_length
+        self.retry_times = 0
 
     def __call__(self):
         while self.process:
@@ -104,11 +106,14 @@ class FramesThreadBody:
                 time.sleep(0.1)
                 continue
             has_frames, frames, seconds = self.capture.get_frames()
-            # if not has_frames and self.frames_queue.empty():
-            #     self.process = False
-            #     print('No frames, exit.')
-            #     break
+            if not has_frames and self.frames_queue.empty():
+                self.retry_times +=1
+                if self.retry_times >= MAX_GET_FRAME_TIMES:
+                    self.process = False
+                    log.warn(f'No frames for {self.retry_times} times, exit.')
+                    break
             if has_frames:
+                self.retry_times = 0
                 self.frames_queue.put(frames)
                 self.seconds_queue.put(seconds)
 
@@ -227,7 +232,7 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
             else:
                 output_video.write(cv.resize(vis, video_output_size))
                 output_video_file = Path(params.output_video)
-                if output_video_file.stat().st_size > output_video_size_limit:
+                if output_video_file.stat().st_size > OUTPUT_VIDEO_SIZE_LIMIT:
                     output_video_file.unlink()
                     output_video = cv.VideoWriter(
                         params.output_video, fourcc, min(source_fps), video_output_size)
@@ -346,7 +351,7 @@ def main(classify_person_flow=None):
 
     run(args, config, capture, object_detector,
         object_recognizer, classify_person_flow)
-    log.info('Demo finished successfully')
+    log.info('Finished successfully')
 
 
 if __name__ == '__main__':
