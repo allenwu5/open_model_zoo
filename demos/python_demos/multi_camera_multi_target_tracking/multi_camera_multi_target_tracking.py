@@ -25,7 +25,7 @@ import sys
 import time
 from os.path import splitext
 from pathlib import Path
-from threading import Thread
+from threading import Lock, Thread
 
 import cv2 as cv
 from openvino.inference_engine import \
@@ -52,6 +52,7 @@ set_log_config()
 OUTPUT_VIDEO_SIZE_LIMIT = 1000 * 1024 * 1024 # 1GB
 MAX_GET_FRAME_TIMES = 50
 
+threading_lock = Lock()
 def check_detectors(args):
     detectors = {
         '--m_detector': args.m_detector,
@@ -238,10 +239,8 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
                         params.output_video, fourcc, min(source_fps), video_output_size)
 
         if params.output_image:
-            file_path, ext = splitext(params.output_image)
-            tmp_file_name = f'{file_path}.tmp{ext}'
-            cv.imwrite(tmp_file_name, vis)
-            os.rename(tmp_file_name, params.output_image)
+            # https://blog.gtwang.org/programming/python-threading-multithreaded-programming-tutorial/
+            Thread(target = write_output_image, args = (params.output_image, vis,)).start()
         # print('\rProcessing frame: {}, fps = {} (avg_fps = {:.3})'.format(
         #                     frame_number, fps, 1. / avg_latency.get()), end="")
         prev_frames, frames = frames, prev_frames
@@ -260,6 +259,14 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
 
     if len(config['embeddings']['save_path']):
         save_embeddings(tracker.scts, **config['embeddings'])
+
+def write_output_image(output_image, vis):
+    file_path, ext = splitext(output_image)
+    tmp_file_name = f'{file_path}.tmp{ext}'
+    threading_lock.acquire()
+    cv.imwrite(tmp_file_name, vis, [int(cv.IMWRITE_JPEG_QUALITY), 80])
+    os.rename(tmp_file_name, output_image)
+    threading_lock.release()
 
 
 def main(classify_person_flow=None):
