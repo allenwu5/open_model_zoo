@@ -31,10 +31,13 @@ def draw_detections(frame, detections, person_class_dict, show_all_detections=Tr
 
         if id >= 0:
             label = 'ID {}'.format(label) if not isinstance(label, str) else label
-            person_class, person_action = person_class_dict.get(id, '')
+            person_class, detect_lines, person_action = person_class_dict.get(id, '')
             label = f'{label} {person_class} {person_action.value}'
             label_size, base_line = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 1, 2)
             top = max(top, label_size[1])
+            for detect_line in detect_lines:
+                detect_line = [int(l) for l in detect_line]
+                cv.line(frame, (detect_line[0], detect_line[1]), (detect_line[2], detect_line[3]), (0, 0, 255), thickness=6)
             cv.rectangle(frame, (left, top - label_size[1]), (left + label_size[0], top + base_line),
                          (255, 255, 255), cv.FILLED)
             cv.putText(frame, label, (left, top), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)

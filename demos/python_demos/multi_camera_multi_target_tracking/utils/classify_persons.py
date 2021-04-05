@@ -13,8 +13,8 @@ def classify_persons(frame_time, frame, detections, classify_person_flow):
             crop_img = frame[top:bottom, left:right]
 
             x1y1x2y2 = (left, top, right, bottom)
-            person_class, person_action = classify_person_flow(frame_time, id, crop_img, x1y1x2y2)
-            person_class_dict[id] = (person_class, person_action)
+            person_class, detect_lines, person_action = classify_person_flow(frame_time, id, crop_img, x1y1x2y2)
+            person_class_dict[id] = (person_class, detect_lines, person_action)
     return person_class_dict
 
 
