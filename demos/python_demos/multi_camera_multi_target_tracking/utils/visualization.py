@@ -32,7 +32,7 @@ def draw_detections(frame, detections, person_class_dict, show_all_detections=Tr
         if id >= 0:
             label = 'ID {}'.format(label) if not isinstance(label, str) else label
             person_class, detect_lines, person_action = person_class_dict.get(id, '')
-            label = f'{label} {person_class} {person_action.value}'
+            label = f'{label} {person_class} {person_action.value if person_action else ""}'
             label_size, base_line = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 1, 2)
             top = max(top, label_size[1])
             for detect_line in detect_lines:
