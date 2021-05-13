@@ -174,6 +174,8 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
 
     start_time = datetime.datetime.now()
     while thread_body.process:
+        tick = datetime.datetime.now()
+
         if not params.no_show:
             key = check_pressed_keys(key)
             if key == 27:
@@ -196,9 +198,6 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
         frame_number += 1
 
         frame_times = [start_time + datetime.timedelta(0, s) for s in seconds]
-
-        # https://stackoverflow.com/questions/5419389/how-to-overwrite-the-previous-print-to-stdout-in-python
-        print(frame_times, end='\r')
 
         detector.run_async(frames, frame_number)
 
@@ -244,6 +243,12 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
         # print('\rProcessing frame: {}, fps = {} (avg_fps = {:.3})'.format(
         #                     frame_number, fps, 1. / avg_latency.get()), end="")
         prev_frames, frames = frames, prev_frames
+
+        tock = datetime.datetime.now()  
+        diff = tock - tick 
+
+        # https://stackoverflow.com/questions/5419389/how-to-overwrite-the-previous-print-to-stdout-in-python
+        print(frame_times, f'takes {diff.total_seconds()}s', end='\r')
     print(presenter.reportMeans())
     print('')
 
