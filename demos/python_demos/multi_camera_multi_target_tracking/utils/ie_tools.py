@@ -29,8 +29,14 @@ class IEModel:
         self.reqs_ids = []
 
     def _preprocess(self, img):
-        _, _, h, w = self.get_input_shape()
+        # _, _, h, w = self.get_input_shape()
+        # return img
+        batch, channel, h, w = self.get_input_shape()
         img = np.expand_dims(cv.resize(img, (w, h)).transpose(2, 0, 1), axis=0)
+        # img = np.expand_dims(img.transpose(2, 0, 1), axis=0)
+        # img = np.expand_dims(img, axis=0)
+        assert img.shape == (batch, channel, h, w)
+        
         return img
 
     def forward(self, img):
@@ -48,8 +54,14 @@ class IEModel:
         outputs = []
         for id in self.reqs_ids:
             self.net.requests[id].wait(-1)
-            res = self.net.requests[id].output_blobs[self.output_key].buffer
-            outputs.append(np.copy(res))
+            if self.output_key == 'ALL':
+                _outputs = []
+                for layer_name, out_blob in self.net.requests[id].output_blobs.items():
+                    _outputs.append(np.copy(out_blob.buffer))
+                outputs.append(_outputs)                      
+            else:
+                res = self.net.requests[id].output_blobs[self.output_key].buffer
+                outputs.append(np.copy(res))
         self.reqs_ids = []
         return outputs
 
@@ -58,7 +70,7 @@ class IEModel:
         return self.inputs_info[self.input_key].input_data.shape
 
 
-def load_ie_model(ie, model_xml, device, plugin_dir, cpu_extension='', num_reqs=1):
+def load_ie_model(ie, model_xml, device, plugin_dir, cpu_extension='', num_reqs=1, out_blob=None):
     """Loads a model in the Inference Engine format"""
     # Plugin initialization for specified device and load extensions library if specified
     log.info("Initializing Inference Engine plugin for %s ", device)
@@ -71,12 +83,13 @@ def load_ie_model(ie, model_xml, device, plugin_dir, cpu_extension='', num_reqs=
 
     assert len(net.input_info) == 1 or len(net.input_info) == 2, \
         "Supports topologies with only 1 or 2 inputs"
-    assert len(net.outputs) == 1 or len(net.outputs) == 4 or len(net.outputs) == 5, \
-        "Supports topologies with only 1, 4 or 5 outputs"
+    # assert len(net.outputs) == 1 or len(net.outputs) == 4 or len(net.outputs) == 5, \
+    #     "Supports topologies with only 1, 4 or 5 outputs"
 
     log.info("Preparing input blobs")
     input_blob = next(iter(net.input_info))
-    out_blob = next(iter(net.outputs))
+    if out_blob is None:
+        out_blob = next(iter(net.outputs))
     net.batch_size = 1
 
     # Loading model to the plugin

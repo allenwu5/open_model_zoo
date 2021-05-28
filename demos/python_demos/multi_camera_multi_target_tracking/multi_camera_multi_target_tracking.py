@@ -23,6 +23,7 @@ import random
 import subprocess
 import sys
 import time
+from collections import defaultdict
 from os.path import splitext
 from pathlib import Path
 from threading import Lock, Thread
@@ -38,6 +39,7 @@ from .utils.misc import (AverageEstimator, check_pressed_keys, read_py_config,
                          set_log_config)
 from .utils.network_wrappers import (DetectionsFromFileReader, Detector,
                                      MaskRCNN, VectorCNN)
+from .utils.network_wrappers_yolo import YOLOV4, YOLOV4Tiny
 from .utils.video import MulticamCapture, NormalizerCLAHE
 from .utils.visualization import get_target_size, visualize_multicam_detections
 
@@ -173,6 +175,8 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
     presenter = monitors.Presenter(params.utilization_monitors, 0)
 
     start_time = datetime.datetime.now()
+    action_to_person_ids = defaultdict(set)
+
     while thread_body.process:
         tick = datetime.datetime.now()
 
@@ -218,8 +222,12 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
             # Crop persons to classify before drawing
             person_class_dict = classify_persons_per_frame(
                 frame_times, prev_frames, tracked_objects, classify_person_flow, **config['visualization_config'])
+            for person_id, (person_class, detect_lines, person_action) in person_class_dict.items():
+                if person_action:
+                    action_to_person_ids[person_action].add(person_id)
+
         vis = visualize_multicam_detections(
-            frame_times, prev_frames, tracked_objects, person_class_dict, fps, **config['visualization_config'])
+            frame_times, prev_frames, tracked_objects, action_to_person_ids, person_class_dict, fps, **config['visualization_config'])
         presenter.drawGraphs(vis)
         if not params.no_show:
             cv.imshow(win_name, vis)
@@ -349,11 +357,27 @@ def main(classify_person_flow=None):
                                    args.device, args.cpu_extension,
                                    capture.get_num_sources())
     else:
-        object_detector = Detector(ie, args.m_detector,
-                                   config['obj_det']['trg_classes'],
-                                   args.t_detector,
-                                   args.device, args.cpu_extension,
-                                   capture.get_num_sources())
+        if 'yolo' in args.m_detector:
+            if 'frozen' in args.m_detector:
+                out_blob = 'ALL'
+                object_detector = YOLOV4Tiny(ie, args.m_detector,
+                                [0],
+                                args.t_detector,
+                                args.device, args.cpu_extension,
+                                capture.get_num_sources(), out_blob=out_blob)
+            else:
+                out_blob='output'
+                object_detector = YOLOV4(ie, args.m_detector,
+                                [0],
+                                args.t_detector,
+                                args.device, args.cpu_extension,
+                                capture.get_num_sources(), out_blob=out_blob)
+        else:
+            object_detector = Detector(ie, args.m_detector,
+                                    config['obj_det']['trg_classes'],
+                                    args.t_detector,
+                                    args.device, args.cpu_extension,
+                                    capture.get_num_sources())
 
     if args.m_reid:
         object_recognizer = VectorCNN(
