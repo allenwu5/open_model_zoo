@@ -357,18 +357,20 @@ def main(classify_person_flow=None):
                                    args.device, args.cpu_extension,
                                    capture.get_num_sources())
     else:
-        if 'yolo' in args.m_detector:
-            if 'frozen' in args.m_detector:
+        if 'yolov4' in args.m_detector:
+            # Person class index is 0
+            trg_classes = [0]
+            if 'tiny' in args.m_detector:
                 out_blob = 'ALL'
                 object_detector = YOLOV4Tiny(ie, args.m_detector,
-                                [0],
+                                trg_classes,
                                 args.t_detector,
                                 args.device, args.cpu_extension,
                                 capture.get_num_sources(), out_blob=out_blob)
             else:
                 out_blob='output'
                 object_detector = YOLOV4(ie, args.m_detector,
-                                [0],
+                                trg_classes,
                                 args.t_detector,
                                 args.device, args.cpu_extension,
                                 capture.get_num_sources(), out_blob=out_blob)
