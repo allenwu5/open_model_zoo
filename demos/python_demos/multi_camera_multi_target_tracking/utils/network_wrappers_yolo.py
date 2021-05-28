@@ -197,9 +197,12 @@ class YOLOV4Tiny(DetectorInterface):
                 bbox[3] = height
 
                 if new_outs is None:
-                    new_outs = bbox
+                    new_outs = np.expand_dims(bbox, axis=0)
                 else:
                     new_outs = np.vstack((new_outs, bbox))
+
+        if new_outs is None:
+            return detections
 
         new_outs = np.expand_dims(new_outs, axis=0)
         predictions = torch.from_numpy(new_outs)
