@@ -69,7 +69,7 @@ def get_target_size(frame_sizes, vis=None, max_window_size=(1920, 1080), stack_f
     return target_width, target_height
 
 
-def visualize_multicam_detections(frame_times, frames, all_objects, person_class_dict, fps='', show_all_detections=True,
+def visualize_multicam_detections(frame_times, frames, all_objects, action_to_person_ids, person_class_dict, fps='', show_all_detections=True,
                                   max_window_size=(1920, 1080), stack_frames='vertical'):
     assert len(frames) == len(all_objects)
     assert stack_frames in ['vertical', 'horizontal']
@@ -88,11 +88,13 @@ def visualize_multicam_detections(frame_times, frames, all_objects, person_class
 
     vis = cv.resize(vis, (target_width, target_height))
 
-    min_frame_time = min(frame_times)
-    label_size, base_line = cv.getTextSize(str(min_frame_time), cv.FONT_HERSHEY_SIMPLEX, 1, 2)
-    cv.putText(vis, str(min_frame_time), (base_line*2, base_line*3),
+    action_person_count = {k.value: len(v) for k, v in action_to_person_ids.items()}
+    text = f'{min(frame_times)} {action_person_count}'
+    label_size, base_line = cv.getTextSize(str(text), cv.FONT_HERSHEY_SIMPLEX, 1, 2)
+
+    cv.putText(vis, str(text), (base_line*2, base_line*3),
                cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 10)
-    cv.putText(vis, str(min_frame_time), (base_line*2, base_line*3),
+    cv.putText(vis, str(text), (base_line*2, base_line*3),
                cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
     return vis
 
