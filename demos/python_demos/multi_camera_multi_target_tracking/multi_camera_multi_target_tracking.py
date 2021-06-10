@@ -178,85 +178,89 @@ def run(params, config, capture, detector, reid, classify_person_flow=None):
     action_to_person_ids = defaultdict(set)
 
     while thread_body.process:
-        tick = datetime.datetime.now()
-
-        if not params.no_show:
-            key = check_pressed_keys(key)
-            if key == 27:
-                break
-            presenter.handleKey(key)
-        start = time.perf_counter()
         try:
-            frames = thread_body.frames_queue.get_nowait()
-            seconds = thread_body.seconds_queue.get_nowait()
-        except queue.Empty:
-            frames = None
-            seconds = None
+            tick = datetime.datetime.now()
 
-        if frames is None:
-            continue
+            if not params.no_show:
+                key = check_pressed_keys(key)
+                if key == 27:
+                    break
+                presenter.handleKey(key)
+            start = time.perf_counter()
+            try:
+                frames = thread_body.frames_queue.get_nowait()
+                seconds = thread_body.seconds_queue.get_nowait()
+            except queue.Empty:
+                frames = None
+                seconds = None
 
-        all_detections = detector.wait_and_grab()
-        if params.save_detections:
-            update_detections(output_detections, all_detections, frame_number)
-        frame_number += 1
+            if frames is None:
+                continue
 
-        frame_times = [start_time + datetime.timedelta(0, s) for s in seconds]
+            all_detections = detector.wait_and_grab()
+            if params.save_detections:
+                update_detections(output_detections, all_detections, frame_number)
+            frame_number += 1
 
-        detector.run_async(frames, frame_number)
+            frame_times = [start_time + datetime.timedelta(0, s) for s in seconds]
 
-        all_masks = [[] for _ in range(len(all_detections))]
-        for i, detections in enumerate(all_detections):
-            all_detections[i] = [det[0] for det in detections]
-            all_masks[i] = [det[2] for det in detections if len(det) == 3]
+            detector.run_async(frames, frame_number)
 
-        tracker.process(prev_frames, all_detections, all_masks)
-        tracked_objects = tracker.get_tracked_objects()
+            all_masks = [[] for _ in range(len(all_detections))]
+            for i, detections in enumerate(all_detections):
+                all_detections[i] = [det[0] for det in detections]
+                all_masks[i] = [det[2] for det in detections if len(det) == 3]
 
-        latency = max(time.perf_counter() - start, sys.float_info.epsilon)
-        avg_latency.update(latency)
-        fps = round(1. / latency, 1)
+            tracker.process(prev_frames, all_detections, all_masks)
+            tracked_objects = tracker.get_tracked_objects()
 
-        person_class_dict = {}
-        if classify_person_flow:
-            # Crop persons to classify before drawing
-            person_class_dict = classify_persons_per_frame(
-                frame_times, prev_frames, tracked_objects, classify_person_flow, **config['visualization_config'])
-            for person_id, (person_class, detect_lines, person_action) in person_class_dict.items():
-                if person_action:
-                    action_to_person_ids[person_action].add(person_id)
+            latency = max(time.perf_counter() - start, sys.float_info.epsilon)
+            avg_latency.update(latency)
+            fps = round(1. / latency, 1)
 
-        vis = visualize_multicam_detections(
-            frame_times, prev_frames, tracked_objects, action_to_person_ids, person_class_dict, fps, **config['visualization_config'])
-        presenter.drawGraphs(vis)
-        if not params.no_show:
-            cv.imshow(win_name, vis)
+            person_class_dict = {}
+            if classify_person_flow:
+                # Crop persons to classify before drawing
+                person_class_dict = classify_persons_per_frame(
+                    frame_times, prev_frames, tracked_objects, classify_person_flow, **config['visualization_config'])
+                for person_id, (person_class, detect_lines, person_action) in person_class_dict.items():
+                    if person_action:
+                        action_to_person_ids[person_action].add(person_id)
 
-        if output_video:
-            if rtsp_mode:
-                ret, frame = cv.imencode('.jpg', vis)
-                if ret:
-                    output_video.stdin.write(frame.tobytes())
-            else:
-                output_video.write(cv.resize(vis, video_output_size))
-                output_video_file = Path(params.output_video)
-                if output_video_file.stat().st_size > OUTPUT_VIDEO_SIZE_LIMIT:
-                    output_video_file.unlink()
-                    output_video = cv.VideoWriter(
-                        params.output_video, fourcc, min(source_fps), video_output_size)
+            vis = visualize_multicam_detections(
+                frame_times, prev_frames, tracked_objects, action_to_person_ids, person_class_dict, fps, **config['visualization_config'])
+            presenter.drawGraphs(vis)
+            if not params.no_show:
+                cv.imshow(win_name, vis)
 
-        if params.output_image:
-            # https://blog.gtwang.org/programming/python-threading-multithreaded-programming-tutorial/
-            Thread(target = write_output_image, args = (params.output_image, vis,)).start()
-        # print('\rProcessing frame: {}, fps = {} (avg_fps = {:.3})'.format(
-        #                     frame_number, fps, 1. / avg_latency.get()), end="")
-        prev_frames, frames = frames, prev_frames
+            if output_video:
+                if rtsp_mode:
+                    ret, frame = cv.imencode('.jpg', vis)
+                    if ret:
+                        output_video.stdin.write(frame.tobytes())
+                else:
+                    output_video.write(cv.resize(vis, video_output_size))
+                    output_video_file = Path(params.output_video)
+                    if output_video_file.stat().st_size > OUTPUT_VIDEO_SIZE_LIMIT:
+                        output_video_file.unlink()
+                        output_video = cv.VideoWriter(
+                            params.output_video, fourcc, min(source_fps), video_output_size)
 
-        tock = datetime.datetime.now()  
-        diff = tock - tick 
+            if params.output_image:
+                # https://blog.gtwang.org/programming/python-threading-multithreaded-programming-tutorial/
+                Thread(target = write_output_image, args = (params.output_image, vis,)).start()
+            # print('\rProcessing frame: {}, fps = {} (avg_fps = {:.3})'.format(
+            #                     frame_number, fps, 1. / avg_latency.get()), end="")
+            prev_frames, frames = frames, prev_frames
 
-        # https://stackoverflow.com/questions/5419389/how-to-overwrite-the-previous-print-to-stdout-in-python
-        print(frame_times, f'takes {diff.total_seconds()}s', end='\r')
+            tock = datetime.datetime.now()  
+            diff = tock - tick 
+
+            # https://stackoverflow.com/questions/5419389/how-to-overwrite-the-previous-print-to-stdout-in-python
+            print(frame_times, f'takes {diff.total_seconds()}s', end='\r')
+        except Exception as e:
+            thread_body.process = False
+            raise e
     print(presenter.reportMeans())
     print('')
 
