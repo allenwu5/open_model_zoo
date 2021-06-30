@@ -286,13 +286,13 @@ def write_output_image(output_image, vis):
     threading_lock.release()
 
 
-def main(classify_person_flow=None):
+def main(classify_person_flow=None, inputs=None, output_video=None, output_image=None):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     """Prepares data for the object tracking demo"""
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@', description='Multi camera multi object \
                                                   tracking live demo script')
     parser.add_argument('-i', type=str, nargs='+', help='Input sources (indexes \
-                        of cameras or paths to video files)', required=True)
+                            of cameras or paths to video files)', default=inputs, required=False)
     parser.add_argument('--config', type=str, default=os.path.join(current_dir, 'configs/person.py'), required=False,
                         help='Configuration file')
 
@@ -312,9 +312,9 @@ def main(classify_person_flow=None):
     parser.add_argument('--m_reid', type=str, required=False,
                         help='Path to the object re-identification model')
 
-    parser.add_argument('--output_video', type=str, default='', required=False,
+    parser.add_argument('--output_video', type=str, default=output_video, required=False,
                         help='Optional. Path to output video')
-    parser.add_argument('--output_image', type=str, default='', required=False,
+    parser.add_argument('--output_image', type=str, default=output_image, required=False,
                         help='Optional. Path to output image')
 
     parser.add_argument('--history_file', type=str, default='', required=False,
